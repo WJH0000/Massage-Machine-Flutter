@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">remoteApp</string>
+  <string name="facebook_app_id">610066790147825</string>
+  <string name="facebook_client_token">50416ce982efe9d0d61d2dae03213905</string>
+  <string name="fb_login_protocol_scheme">fb610066790147825</string>
+</resources>
