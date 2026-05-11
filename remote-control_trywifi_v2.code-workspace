@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "remote-control_trywifi_v2",
+			"path": "."
+		},
+		{
+			"name": "WiFi_scanner",
+			"path": "../../../WiFi_scanner/WiFi_scanner"
+		}
+	],
+	"settings": {}
+}

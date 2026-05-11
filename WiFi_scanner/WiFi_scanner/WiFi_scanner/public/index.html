@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ESP32 Wi-Fi & Motor Control</title>
+  <style>
+    body { font-family: sans-serif; padding:1rem; max-width:600px; margin:auto; }
+    button { padding:.5rem 1rem; margin:.25rem; }
+    table { border-collapse:collapse; width:100%; margin-top:1rem; }
+    th, td { border:1px solid #ccc; padding:.5rem; }
+    tr.network:hover { background:#f0f0f0; cursor:pointer; }
+    tr.connected   { background:#e0ffe0; }
+    #status { margin-top:.5rem; font-style:italic; }
+    #motorControls { margin-top:1.5rem; text-align:center; }
+  </style>
+</head>
+<body>
+  <h1>Available Wi-Fi Networks</h1>
+  <button id="scanBtn">Scan</button>
+  <div id="status"></div>
+
+  <table id="networks" hidden>
+    <thead>
+      <tr><th>SSID</th><th>Signal</th><th>Channel</th><th>Security</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="motorControls" hidden>
+    <h2>Motor Control</h2>
+    <button id="startMotorBtn">Start Motor</button>
+    <button id="stopMotorBtn">Stop Motor</button>
+  </div>
+
+  <script>
+    const scanBtn       = document.getElementById('scanBtn');
+    const status        = document.getElementById('status');
+    const table         = document.getElementById('networks');
+    const tbody         = table.querySelector('tbody');
+    const motorControls = document.getElementById('motorControls');
+    const startMotorBtn = document.getElementById('startMotorBtn');
+    const stopMotorBtn  = document.getElementById('stopMotorBtn');
+
+    scanBtn.addEventListener('click', async () => {
+      status.textContent = 'Scanning…';
+      table.hidden = true; tbody.innerHTML = '';
+      motorControls.hidden = true;
+      try {
+        const res = await fetch('/api/scan');
+        if (!res.ok) throw new Error(await res.text());
+        const networks = await res.json();
+        if (!networks.length) {
+          status.textContent = 'No networks found.';
+          return;
+        }
+        networks.forEach(n => {
+          const tr = document.createElement('tr');
+          tr.classList.add('network');
+          tr.innerHTML = `
+            <td>${n.ssid||'<em>hidden</em>'}</td>
+            <td>${n.signal_level}</td>
+            <td>${n.channel}</td>
+            <td>${n.security||'open'}</td>
+          `;
+          tr.addEventListener('click', async () => {
+            const ssid = n.ssid;
+            const isOpen = !n.security || n.security.toLowerCase()==='open';
+            let pwd = '';
+            if (!isOpen) {
+              pwd = prompt(`Password for "${ssid}":`);
+              if (pwd===null) return;
+            }
+            status.textContent = `Connecting to "${ssid}"…`;
+            const resp = await fetch('/api/connect', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ ssid, password: pwd })
+            });
+            const result = await resp.json();
+            if (result.success) {
+              status.textContent = `Connected to "${ssid}"!`;
+              tr.classList.add('connected');
+              motorControls.hidden = false;
+            } else {
+              status.textContent = `Connection failed: ${result.error}`;
+            }
+          });
+          tbody.appendChild(tr);
+        });
+        status.textContent = `Found ${networks.length} network(s). Click one to connect.`;
+        table.hidden = false;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    startMotorBtn.addEventListener('click', async () => {
+      status.textContent = 'Starting motor…';
+      try {
+        const resp = await fetch('/api/motor', {
+          method: 'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ action: 'start' })
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        status.textContent = 'Motor started!';
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    });
+
+    stopMotorBtn.addEventListener('click', async () => {
+      status.textContent = 'Stopping motor…';
+      try {
+        const resp = await fetch('/api/motor', {
+          method: 'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ action: 'stop' })
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        status.textContent = 'Motor stopped!';
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
